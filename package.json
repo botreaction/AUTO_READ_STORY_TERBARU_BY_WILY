@@ -1,1 +1,17 @@
-
+{
+  "name": "Wily Kun",
+  "version": "1.0.0",
+  "description": "Kuntil",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js --pairing-code"
+  },
+  "author": "Wily Kun",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "@hapi/boom": "latest",
+    "pino": "latest",
+    "readline": "latest"
+  }
+}
