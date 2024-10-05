@@ -92,6 +92,16 @@ async function WAStart() {
           }
         }
       }
+
+      // Auto-Read Message Feature
+      if (settings.autoReadMessage && !m.key.fromMe) { // If autoReadMessage is true and message is not from bot itself
+        try {
+          await client.readMessages([m.key]);
+          console.log(`Berhasil membaca pesan dari ${m.key.participant.split("@")[0]}`);
+        } catch (error) {
+          console.error('Error', error);
+        }
+      }
     } catch (err) {
       console.log(err);
     }
