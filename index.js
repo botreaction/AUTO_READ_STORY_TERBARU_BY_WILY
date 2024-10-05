@@ -56,7 +56,8 @@ async function WAStart() {
             const messageTime = m.messageTimestamp * 1000;
             const timeDiff = currentTime - messageTime;
 
-            if (timeDiff <= settings.storyReadInterval) {
+            // Periksa interval dan jalankan fungsi membaca status
+            if (timeDiff <= settings.storyReadInterval) { 
               if (settings.autoReadStory) {
                 try {
                   await client.readMessages([m.key]);
