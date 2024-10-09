@@ -12,7 +12,7 @@ ___
 
 
 ```
-$ git clone --single-branch --branch js https://github.com/Onichaa/readsw.git
+$ git clone --single-branch --branch js https://github.com/botreaction/AUTO_READ_STORY_TERBARU_BY_WILY.git
 $ cd readsw
 $ npm i
 $ npm start
@@ -25,7 +25,7 @@ ___
 
 
 ```
-$ git clone --single-branch --branch js https://github.com/Onichaa/readsw.git
+$ git clone --single-branch --branch js https://github.com/botreaction/AUTO_READ_STORY_TERBARU_BY_WILY.git
 $ cd readsw
 $ npm i
 $ npm start
