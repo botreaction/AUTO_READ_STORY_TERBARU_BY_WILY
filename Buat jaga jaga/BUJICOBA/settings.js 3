@@ -1,31 +1,28 @@
-  // settings.js
-  module.exports = {
-    sessionPath: './sesi', // Path ke sesi bisa di ganti di sini
-    browserPlatform: "ubuntu", // Platform browser (contoh: ubuntu, mac, windows)
-    browserName: "Chrome", // Nama browser (contoh: Chrome, Firefox, Safari) bisa di rubah di sini
-    autoReadStory: {
-      emoji: true,
-      // Daftar emoji yang bisa digunakan
-      emojis: ["🔥", "🥶", "🗿", "🐥", "🐼", "😱", "👻", "😎", "✨", "🦈", "🐺", "👀", "💥", "🤖", "👍", "🐈", "☕", "🧭", "⚡", "🎃", "🎲", "🌠", "🌪️", "🐬", "🐙", "😸", "😹", "😼", "😽", "🙀", "💤", "🏆", "🌟", "🌞", "🎉", "🎁", "🧸", "🧿", "🎭", "🚙", "🚀", "🛰️", "🛸", "⏳", "⏰", "🌀", "🍺", "🍻", "🍔", "🌼", "🌻", "🌺", "👨‍🏫", "👨‍💻", "🧖‍♂️", "😁", "😪", "☠️", "🎆", "🎑", "🎯", "🔮", "🎶", "⚔️", "⚙️", "🈵", "✅", "🈂️", "🈷️", "🈶", "🈸", "🎊", "☣️", "⚠️", "🔙", "🔚", "🔛", "🔜", "🔝", "🛐", "✳️", "🔰", "🆙", "📸", "🏡", "🦡", "🌲", "🐧", "🦜", "🐸", "🦢", "🐠", "🐡", "🐌", "🦋", "💐", "🌼", "🍌", "🥞", "🧀", "🍖", "🍗", "🥩", "🥓", "🍟", "🍕", "🌭", "🥪", "😺"],
-    },
-    statusSpeed: {
-      enabled: true,
-      delay: 3000 // Delay in milliseconds (3 detik)
-    },
-    autoOnline: {
-      enabled: true,
-    },
-    autoBioUptime: {
-      enabled: true,
-      updateInterval: 60000 // Update interval in milliseconds (1 menit)
-    },
-    autoTyping: {
-      enabled: true,
-    },
-    autoTypingOff: {
-      enabled: true,
-    },
-    statusNameSource: {
-      usePushName: true // Gunakan m.pushName jika true, m.key.participant.split('@')[0] jika false
-    },
-  }
+// settings.js
+module.exports = {
+  sessionPath: './sesi', // Path ke sesi bisa di ganti di sini
+  browserPlatform: "ubuntu", // Platform browser (contoh: ubuntu, mac, windows)
+  browserName: "Chrome", // Nama browser (contoh: Chrome, Firefox, Safari) bisa di rubah di sini
+  autoReadStory: {
+    emoji: true,
+    // Daftar emoji yang bisa digunakan
+    emojis: ["👍", "❤️", "😍", "👏", "🔥", "🙏", "😎", "🤯", "💯"],
+  },
+  statusSpeed: {
+    enabled: true,
+    delay: 3000 // Delay in milliseconds (3 detik)
+  },
+  autoOnline: {
+    enabled: true,
+  },
+  autoBioUptime: {
+    enabled: true,
+    updateInterval: 60000 // Update interval in milliseconds (1 menit)
+  },
+  autoTyping: {
+    enabled: false, // Default: nonaktif
+  },
+  statusNameSource: {
+    usePushName: true // Gunakan m.pushName jika true, m.key.participant.split('@')[0] jika false
+  },
+}
