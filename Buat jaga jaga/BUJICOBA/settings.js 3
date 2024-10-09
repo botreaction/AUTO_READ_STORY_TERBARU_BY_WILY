@@ -16,6 +16,6 @@ const settings = {
   browserName: "Chrome", // Nama browser (contoh: Chrome, Firefox, Safari)
   noAntiRestart: false, // Default: No Anti Restart diaktifkan
   ignoreError: false // Default: Ignore Error diaktifkan
-};
+}; 
 
 module.exports = settings;
