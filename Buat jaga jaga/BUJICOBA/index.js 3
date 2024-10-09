@@ -21,11 +21,19 @@ const store = makeInMemoryStore({ logger: pino().child({ level: "silent", stream
 
 const settings = require('./settings'); // Import pengaturan
 
+// Fungsi untuk mendapatkan warna acak
+function getRandomColor() {
+  const colors = ['red', 'green', 'blue', 'yellow', 'magenta', 'cyan', 'white'];
+  const randomIndex = Math.floor(Math.random() * colors.length);
+  return colors[randomIndex];
+}
+
 async function WAStart() {
+  const randomColor = getRandomColor(); // Ambil warna acak
   cfonts.say('auto-read-sw\nby-wily-kun', { // Tampilkan teks dengan cfonts
     font: 'tiny',       
     align: 'center',
-    colors: ['system'],
+    colors: [randomColor], // Gunakan warna acak
     background: 'transparent', 
     letterSpacing: 1,
     lineHeight: 1,
@@ -49,7 +57,6 @@ async function WAStart() {
   console.log(`Auto Online: ${settings.autoOnline.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
   console.log(`Auto Bio Uptime: ${settings.autoBioUptime.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
   console.log(`Auto Typing: ${settings.autoTyping.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
-  console.log(`Auto Typing Off: ${settings.autoTypingOff.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
   console.log(`Status Name Source: ${settings.statusNameSource.usePushName ? "m.pushName" : "m.key.participant.split('@')[0]"}`);
   console.log(`Browser Platform: ${settings.browserPlatform}`);
   console.log(`Browser Name: ${settings.browserName}`);
@@ -92,20 +99,6 @@ async function WAStart() {
           setTimeout(async () => {
             await client.sendPresenceUpdate('paused', m.key.remoteJid); // Hentikan tampilan sedang mengetik
           }, 3000); // Tunggu selama 3 detik
-        }
-      } catch (err) {
-        console.log(err);
-      }
-    });
-  }
-
-  // Auto Typing Off
-  if (settings.autoTypingOff.enabled) {
-    client.ev.on("messages.upsert", async (chatUpdate) => {
-      try {
-        const m = chatUpdate.messages[0];
-        if (!m.key.fromMe && m.key.remoteJid !== 'status@broadcast') {
-          await client.sendPresenceUpdate('paused', m.key.remoteJid); // Hentikan tampilan sedang mengetik
         }
       } catch (err) {
         console.log(err);
