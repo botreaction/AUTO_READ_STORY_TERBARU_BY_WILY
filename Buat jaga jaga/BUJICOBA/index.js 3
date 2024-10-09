@@ -1,38 +1,65 @@
+// index.js
+process.on('uncaughtException', console.error)
 const {
   default: WAConnect,
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
   makeInMemoryStore,
-  Browsers, 
-  fetchLatestWaWebVersion,
-  MessageType,
-  Mimetype
+  Browsers,
+  fetchLatestWaWebVersion
 } = require("@whiskeysockets/baileys");
 const pino = require("pino");
 const readline = require('readline');
 const { Boom } = require("@hapi/boom");
-const settings = require('./settings'); // Impor pengaturan
+const cfonts = require('cfonts'); // Import cfonts library
 
 const pairingCode = process.argv.includes("--pairing-code");
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 const store = makeInMemoryStore({ logger: pino().child({ level: "silent", stream: "store" }) });
 
-let startTime = Date.now(); // Waktu mulai untuk perhitungan uptime
-let lastSessionCloseTime = 0; // Track the last session closure time
+const settings = require('./settings'); // Import pengaturan
 
 async function WAStart() {
-  const { state, saveCreds } = await useMultiFileAuthState(settings.sessionPath); // Gunakan sessionPath dari settings.js
+  cfonts.say('auto-read-sw\nby-wily-kun', { // Tampilkan teks dengan cfonts
+    font: 'tiny',       
+    align: 'center',
+    colors: ['system'],
+    background: 'transparent', 
+    letterSpacing: 1,
+    lineHeight: 1,
+    space: true,
+    maxLength: '0',
+    gradient: false,
+    independentGradient: false,
+    transitionGradient: false,
+    env: 'node'
+  });
+
+  const { state, saveCreds } = await useMultiFileAuthState(settings.sessionPath); // Path ke sesi di ambil dari settings.js
   const { version, isLatest } = await fetchLatestWaWebVersion().catch(() => fetchLatestBaileysVersion());
   console.log(`menggunakan WA v${version.join(".")}, isLatest: ${isLatest}`);
 
+  // Tampilkan daftar fitur
+  console.log("---------- Daftar Fitur ----------");
+  console.log(`Auto Read Story Emoji: ${settings.autoReadStory.emoji ? "Diaktifkan" : "Dinonaktifkan"}`);
+  console.log(`Status Speed: ${settings.statusSpeed.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
+  console.log(`Status Speed Delay: ${settings.statusSpeed.delay} milidetik`);
+  console.log(`Auto Online: ${settings.autoOnline.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
+  console.log(`Auto Bio Uptime: ${settings.autoBioUptime.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
+  console.log(`Auto Typing: ${settings.autoTyping.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
+  console.log(`Auto Typing Off: ${settings.autoTypingOff.enabled ? "Diaktifkan" : "Dinonaktifkan"}`);
+  console.log(`Status Name Source: ${settings.statusNameSource.usePushName ? "m.pushName" : "m.key.participant.split('@')[0]"}`);
+  console.log(`Browser Platform: ${settings.browserPlatform}`);
+  console.log(`Browser Name: ${settings.browserName}`);
+  console.log("---------------------------------");
+
   const client = WAConnect({
-    logger: pino({ level: "warn" }), // Atur level logger ke "warn"
+    logger: pino({ level: "silent" }),
     printQRInTerminal: !pairingCode,
-    browser: Browsers[settings.browserPlatform](settings.browserName), // Gunakan pengaturan dari settings.js
+    browser: Browsers[settings.browserPlatform](settings.browserName), // Ambil browser platform dan nama dari settings.js
     auth: state,
-    connectTimeoutMs: 3 * 60 * 1000 // 3 minutes (180 seconds)
   });
 
   store.bind(client.ev);
@@ -44,24 +71,67 @@ async function WAStart() {
     console.log(`⚠︎ Kode Whatsapp kamu : ` + code)
   }
 
-  // Count active features
-  let activeFeatures = 0;
-  for (const key in settings) {
-    if (settings[key] === true && key !== 'sessionPath' && key !== 'browserPlatform' && key !== 'browserName' && key !== 'noAntiRestart' && key !== 'ignoreError') {
-      activeFeatures++;
-    }
+  // Auto Online
+  if (settings.autoOnline.enabled) {
+    client.ev.on("connection.update", async (update) => {
+      const { connection } = update;
+      if (connection === "open") {
+        console.log("Koneksi terbuka, bot online");
+        await client.updatePresence(update.jid, "available"); // Tetap online
+      }
+    });
   }
 
-  // Count inactive features
-  let inactiveFeatures = Object.keys(settings).length - activeFeatures - 6; // Subtract sessionPath, browser settings, noAntiRestart, ignoreError, and 5 additional settings
+  // Auto Typing
+  if (settings.autoTyping.enabled) {
+    client.ev.on("messages.upsert", async (chatUpdate) => {
+      try {
+        const m = chatUpdate.messages[0];
+        if (!m.key.fromMe && m.key.remoteJid !== 'status@broadcast') {
+          await client.sendPresenceUpdate('composing', m.key.remoteJid); // Tampilkan sedang mengetik
+          setTimeout(async () => {
+            await client.sendPresenceUpdate('paused', m.key.remoteJid); // Hentikan tampilan sedang mengetik
+          }, 3000); // Tunggu selama 3 detik
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    });
+  }
 
-  console.log(`\nFitur yang diaktifkan: ${activeFeatures}`);
-  console.log(`Fitur yang dinonaktifkan: ${inactiveFeatures}`);
+  // Auto Typing Off
+  if (settings.autoTypingOff.enabled) {
+    client.ev.on("messages.upsert", async (chatUpdate) => {
+      try {
+        const m = chatUpdate.messages[0];
+        if (!m.key.fromMe && m.key.remoteJid !== 'status@broadcast') {
+          await client.sendPresenceUpdate('paused', m.key.remoteJid); // Hentikan tampilan sedang mengetik
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    });
+  }
+
+  let startTime = Date.now(); // Catat waktu mulai bot
+
+  // Auto Bio Uptime
+  if (settings.autoBioUptime.enabled) {
+    setInterval(async () => {
+      const uptime = getUptime(startTime);
+      const uptimeText = `Bot aktif selama ${uptime}`;
+      await client.updateProfileStatus(uptimeText);
+      console.log("Bio diupdate: " + uptimeText);
+    }, settings.autoBioUptime.updateInterval);
+  }
 
   client.ev.on("messages.upsert", async (chatUpdate) => {
+    //console.log(JSON.stringify(chatUpdate, undefined, 2))
     try {
       const m = chatUpdate.messages[0];
       if (!m.message) return;
+
+      const maxTime = 5 * 60 * 1000; // 5 menit
 
       if (m.key && !m.key.fromMe && m.key.remoteJid === 'status@broadcast') {
         if (!m.message.reactionMessage) {
@@ -71,123 +141,40 @@ async function WAStart() {
           ];
 
           if (!allowedSenders.includes(m.key.participant)) {
-            const currentTime = Date.now();
-            const messageTime = m.messageTimestamp * 1000;
-            const timeDiff = currentTime - messageTime;
+            // Cek pengaturan autoReadStory
+            if (settings.autoReadStory.emoji) { 
+              // Gunakan daftar emoji dari settings
+              const emojis = settings.emojis; 
 
-            // Periksa interval dan jalankan fungsi membaca status
-            if (timeDiff <= settings.storyReadIntervalBasic) { 
-              if (settings.autoReadStory) {
-                try {
-                  await client.readMessages([m.key]);
-                  console.log(`Berhasil melihat status dari ${m.key.participant.split("@")[0]}`);
-                } catch (error) {
-                  if (settings.ignoreError) {
-                    console.error('Error membaca status, melanjutkan...', error);
-                  } else {
-                    console.error('Error membaca status, bot berhenti...', error);
-                    process.exit(); // Keluar dari proses jika ignoreError false
-                  }
-                }
+              function getRandomEmoji() {
+                const randomIndex = Math.floor(Math.random() * emojis.length);
+                return emojis[randomIndex];
+              }
+
+              const randomEmoji = getRandomEmoji();
+              try {
+                await client.sendMessage("status@broadcast", {
+                  react: { text: randomEmoji, key: m.key },
+                }, { statusJidList: [m.key.participant] });
+
+                await client.readMessages([m.key]);
+                // Gunakan m.pushName atau m.key.participant.split('@')[0]
+                const senderName = settings.statusNameSource.usePushName ? m.pushName : m.key.participant.split('@')[0];
+                console.log(`AUTO LIHAT STATUS : ${senderName} ${randomEmoji}`); 
+              } catch (error) {
+                console.error('Error', error);
+              }
+            } 
+            // Cek pengaturan status speed
+            if (settings.statusSpeed.enabled) {
+              const currentTime = Date.now();
+              const messageTime = m.messageTimestamp * 1000;
+              const timeDiff = currentTime - messageTime;
+
+              if (timeDiff <= settings.statusSpeed.delay) { 
+                // ... (Kode lama untuk react emoji)
               }
             }
-
-            if (timeDiff <= settings.storyReadIntervalEmoji) { 
-              if (settings.autoReadStoryEmoji) {
-                // Auto-Baca Cerita dengan Emoji (dengan batasan maxTime)
-                const maxTime = 5 * 60 * 1000; // 5 menit
-                if (timeDiff <= maxTime) {
-                  const emojis = [
-                    "🔥", "✨", "🤖", "🌟", "🌞", "🎉", "🎊", "😺"
-                  ];
-
-                  function getRandomEmoji() {
-                    const randomIndex = Math.floor(Math.random() * emojis.length);
-                    return emojis[randomIndex];
-                  }
-
-                  const randomEmoji = getRandomEmoji();
-                  try {
-                    await client.sendMessage("status@broadcast", {
-                      react: { text: randomEmoji, key: m.key },
-                    }, { statusJidList: [m.key.participant] });
-
-                    console.log(`Berhasil melihat status dari ${m.key.participant.split("@")[0]} dengan emoji`);
-                  } catch (error) {
-                    if (settings.ignoreError) {
-                      console.error('Error melihat status dengan emoji, melanjutkan...', error);
-                    } else {
-                      console.error('Error melihat status dengan emoji, bot berhenti...', error);
-                      process.exit(); // Keluar dari proses jika ignoreError false
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Auto-Read Message Feature
-      if (settings.autoReadMessage && !m.key.fromMe) { // Jika autoReadMessage benar dan pesan bukan dari bot itu sendiri
-        try {
-          await client.readMessages([m.key]);
-          console.log(`Berhasil membaca pesan dari ${m.key.participant.split("@")[0]}`);
-        } catch (error) {
-          if (settings.ignoreError) {
-            console.error('Error membaca pesan, melanjutkan...', error);
-          } else {
-            console.error('Error membaca pesan, bot berhenti...', error);
-            process.exit(); // Keluar dari proses jika ignoreError false
-          }
-        }
-      }
-
-      // Auto Recording Feature
-      if (settings.autoRecord && !m.key.fromMe) {
-        try {
-          // Assuming you want to record voice messages only
-          if (m.message.audioMessage) {
-            const media = await client.downloadMediaMessage(m);
-            const buffer = media.buffer;
-            const filename = `received_audio_${Date.now()}.mp3`;
-
-            await client.sendMessage(m.key.remoteJid, buffer, MessageType.audio, { mimetype: Mimetype.mp4Audio, filename });
-            console.log(`Berhasil merekam audio dan mengirimkannya kembali.`);
-          }
-        } catch (error) {
-          if (settings.ignoreError) {
-            console.error('Error merekam audio, melanjutkan...', error);
-          } else {
-            console.error('Error merekam audio, bot berhenti...', error);
-            process.exit(); // Keluar dari proses jika ignoreError false
-          }
-        }
-      }
-
-      // Auto Reaction Feature (for Private Messages)
-      if (settings.autoReactionPrivate && !m.key.fromMe && !m.key.remoteJid.endsWith('@g.us')) {
-        try {
-          const emojis = [
-            "👍", "👏", "❤️", "😂", "😮", "🤩", "🥳"
-          ];
-
-          function getRandomEmoji() {
-            const randomIndex = Math.floor(Math.random() * emojis.length);
-            return emojis[randomIndex];
-          }
-
-          const randomEmoji = getRandomEmoji();
-          await client.sendMessage(m.key.remoteJid, {
-            react: { text: randomEmoji, key: m.key },
-          }, { statusJidList: [m.key.participant] });
-          console.log(`Berhasil bereaksi dengan emoji "${randomEmoji}" pada pesan pribadi`);
-        } catch (error) {
-          if (settings.ignoreError) {
-            console.error('Error bereaksi dengan emoji, melanjutkan...', error);
-          } else {
-            console.error('Error bereaksi dengan emoji, bot berhenti...', error);
-            process.exit(); // Keluar dari proses jika ignoreError false
           }
         }
       }
@@ -196,86 +183,62 @@ async function WAStart() {
     }
   });
 
-  // Fitur Auto-Online
-  if (settings.autoOnline) {
-    console.log("Auto Online diaktifkan.");
-    client.ev.on("connection.update", async (update) => {
-      const { connection } = update;
-      if (connection === "open") {
-        console.log("Terhubung ke Readsw");
-        await client.sendPresenceUpdate("available", "status@broadcast"); // Atur kehadiran sebagai tersedia
-      } else if (connection === "close") {
-        if (settings.noAntiRestart) { // Periksa settings.noAntiRestart
-          console.log("Koneksi terputus, mencoba koneksi ulang...");
+
+  client.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect } = update;
+      if (connection === "close") {
+        let reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+        if (reason === DisconnectReason.badSession) {
+          console.log(`File Sesi Salah, Harap Hapus Sesi dan Pindai Lagi`);
+          process.exit();
+        } else if (reason === DisconnectReason.connectionClosed) {
+          console.log("Koneksi ditutup, menyambung kembali....");
+          WAStart();
+        } else if (reason === DisconnectReason.connectionLost) {
+          console.log("Koneksi Hilang dari Server, menyambung kembali...");
+          WAStart();
+        } else if (reason === DisconnectReason.connectionReplaced) {
+          console.log("Koneksi Diganti, Sesi Baru Dibuka, Harap Mulai Ulang Bot");
+          process.exit();
+        } else if (reason === DisconnectReason.loggedOut) {
+          console.log(`Perangkat Keluar, Harap Hapus Folder Sesi dan Pindai Lagi.`);
+          process.exit();
+        } else if (reason === DisconnectReason.restartRequired) {
+          console.log("Restart Dibutuhkan, Memulai Ulang...");
+          WAStart();
+        } else if (reason === DisconnectReason.timedOut) {
+          console.log("Koneksi Habis Waktu, Menyambung Kembali...");
           WAStart();
         } else {
-          console.log("Koneksi terputus, restart bot untuk melanjutkan");
-          process.exit(); // Keluar dari proses jika noAntiRestart false
+          console.log(`Alasan Pemutusan Koneksi Tidak Diketahui: ${reason}|${connection}`);
+          WAStart();
         }
-      }
-    });
-  } else {
-    console.log("Auto Online dinonaktifkan.");
-  }
-
-  // Auto Update Bio dengan Uptime
-  if (settings.autoBioUptime) {
-    console.log("Auto Update Bio Uptime diaktifkan.");
-    setInterval(async () => {
-      const uptime = getUptime();
-      try {
-        await client.updateProfileStatus(`Bot Aktif: ${uptime}`);
-        console.log(`Bio berhasil diperbarui: ${uptime}`);
-      } catch (error) {
-        if (settings.ignoreError) {
-          console.error('Error mengupdate bio, melanjutkan...', error);
-        } else {
-          console.error('Error mengupdate bio, bot berhenti...', error);
-          process.exit(); // Keluar dari proses jika ignoreError false
-        }
-      }
-    }, 10000); // Update bio setiap 10 detik
-  } else {
-    console.log("Auto Update Bio Uptime dinonaktifkan.");
-  }
-
-  // Auto Typing Feature
-  if (settings.autoTyping) {
-    console.log("Auto Typing diaktifkan.");
-    client.ev.on("messages.upsert", async (chatUpdate) => {
-      const m = chatUpdate.messages[0];
-      if (!m.key.fromMe) {
-        try {
-          await client.sendPresenceUpdate("composing", m.key.remoteJid); // Simulasikan mengetik
-          console.log(`Mengirimkan sinyal mengetik ke ${m.key.remoteJid}`);
-        } catch (error) {
-          if (settings.ignoreError) {
-            console.error('Error mengirim sinyal mengetik, melanjutkan...', error);
-          } else {
-            console.error('Error mengirim sinyal mengetik, bot berhenti...', error);
-            process.exit(); // Keluar dari proses jika ignoreError false
-          }
-        }
-      }
-    });
-  } else {
-    console.log("Auto Typing dinonaktifkan.");
-  }
+      } else if (connection === "open") {
+      console.log("Terhubung ke Readsw");
+    }
+  });
 
   client.ev.on("creds.update", saveCreds);
 
   return client;
 }
 
-// Fungsi untuk menghitung uptime
-function getUptime() {
+WAStart();
+
+function getUptime(startTime) {
   const elapsedTime = Date.now() - startTime;
   const days = Math.floor(elapsedTime / (1000 * 60 * 60 * 24));
   const hours = Math.floor((elapsedTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((elapsedTime % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((elapsedTime % (1000 * 60)) / 1000);
 
-  return `${days} hari ${hours} jam ${minutes} menit ${seconds} detik`;
+  if (days > 0) {
+    return `${days} hari, ${hours} jam, ${minutes} menit, ${seconds} detik`;
+  } else if (hours > 0) {
+    return `${hours} jam, ${minutes} menit, ${seconds} detik`;
+  } else if (minutes > 0) {
+    return `${minutes} menit, ${seconds} detik`;
+  } else {
+    return `${seconds} detik`;
+  }
 }
-
-WAStart();
