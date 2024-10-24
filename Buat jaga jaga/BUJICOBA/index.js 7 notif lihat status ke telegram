@@ -1,0 +1,250 @@
+// index.js
+const {
+  default: WAConnect,
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeInMemoryStore,
+  Browsers,
+  fetchLatestWaWebVersion
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const readline = require('readline');
+const { Boom } = require("@hapi/boom");
+const cfonts = require('cfonts'); // Import cfonts library
+const settings = require('./settings'); // Import pengaturan
+const TelegramBot = require('node-telegram-bot-api'); // Import Telegram library
+
+const pairingCode = process.argv.includes("--pairing-code");
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const question = (text) => new Promise((resolve) => rl.question(text, resolve));
+const store = makeInMemoryStore({ logger: pino().child({ level: "silent", stream: "store" }) });
+
+// Aktifkan logging uncaught exception jika diaktifkan di settings.js
+if (settings.uncaughtExceptionLogging.enabled) {
+  process.on('uncaughtException', console.error); 
+}
+
+async function WAStart() {
+  cfonts.say('Whatsapp Bot', {
+    font: 'block', // define the font face
+    align: 'center', // define text alignment
+    colors: ['system'], // define text color
+    background: 'transparent', // define background color
+    letterSpacing: 1, // define letter spacing
+    lineHeight: 1, // define line height
+    space: true, // define spacing value
+    maxLength: '0' // define max length
+  });
+
+  console.log(`\n[INFO] Fitur yang diaktifkan:`);
+  if (settings.features.autoReadStory.enabled) {
+    console.log('[INFO]   Auto Read Story - Aktif');
+  }
+  if (settings.features.statusSpeed.enabled) {
+    console.log('[INFO]   Status Speed - Aktif');
+  }
+  if (settings.features.autoOnline.enabled) {
+    console.log('[INFO]   Auto Online - Aktif');
+  }
+  if (settings.features.autoBioUptime.enabled) {
+    console.log('[INFO]   Auto Bio Uptime - Aktif');
+  }
+  if (settings.features.autoTyping.enabled) {
+    console.log('[INFO]   Auto Typing - Aktif');
+  }
+  if (settings.features.telegram.enabled) {
+    console.log('[INFO]   Telegram Notifikasi - Aktif');
+  }
+  console.log(`\n`);
+
+  let { state, saveCreds } = await useMultiFileAuthState(settings.sessionPath);
+  let { version, isLatest } = await fetchLatestBaileysVersion();
+
+  console.log(`\n[INFO] Using Baileys version: ${version}, isLatest: ${isLatest}`);
+  console.log(`\n[INFO] Connecting to WhatsApp...`);
+
+  const client = WAConnect({
+    logger: pino({ level: 'silent' }),
+    printQRInTerminal: true,
+    auth: state,
+    browser: Browsers.macOS("Chrome"),
+    // browser: Browsers.Linux("Chrome"),
+  });
+
+  // save credentials whenever updated
+  client.ev.on('creds.update', saveCreds);
+
+  // Handle connection updates
+  client.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect } = update;
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut);
+      console.log(`\n[INFO] Connection closed. Reconnect: ${shouldReconnect}`); 
+      // reconnect if not logged out
+      if (shouldReconnect) {
+        await WAStart();
+      }
+    } else if (connection === 'open') {
+      console.log(`\n[INFO] Connected successfully to WhatsApp!`); 
+      // jika auto online diaktifkan
+      if (settings.features.autoOnline.enabled) {
+        client.sendPresenceUpdate('available', 'status@broadcast');
+        console.log('[INFO]   Auto Online: Aktif');
+      }
+    }
+  });
+
+  // Handle messages
+  client.ev.on("messages.upsert", async (chatUpdate) => {
+    const { messages } = chatUpdate;
+
+    for (const m of messages) {
+      if (m.key && !m.key.fromMe && m.key.remoteJid === 'status@broadcast') {
+        // Cek jika pesan memiliki reactionMessage
+        if (m.message && m.message.reactionMessage) { 
+          // ... (Kode untuk menangani reactionMessage)
+        } else {
+          // Jika tidak memiliki reactionMessage, lakukan sesuatu yang lain
+          // Misalnya, cetak pesan ke konsol
+          console.log(`Pesan tidak memiliki reactionMessage`); 
+        }
+        const allowedSenders = [
+          "6281447345627@s.whatsapp.net",
+          "628145563553@s.whatsapp.net",
+        ];
+
+        if (!allowedSenders.includes(m.key.participant)) {
+          // Cek pengaturan autoReadStory
+          if (settings.features.autoReadStory.emoji) { 
+            // Gunakan daftar emoji dari settings
+            const emojis = settings.features.autoReadStory.emojis; 
+
+            function getRandomEmoji() {
+              const randomIndex = Math.floor(Math.random() * emojis.length);
+              return emojis[randomIndex];
+            }
+
+            const randomEmoji = getRandomEmoji();
+            try {
+              await client.sendMessage("status@broadcast", {
+                react: { text: randomEmoji, key: m.key },
+              }, { statusJidList: [m.key.participant] });
+
+              await client.readMessages([m.key]);
+              // Gunakan m.pushName atau m.key.participant.split('@')[0]
+              const senderName = settings.features.statusNameSource.usePushName ? m.pushName : m.key.participant.split('@')[0];
+              // Hapus randomColor
+              console.log(`\nAUTO LIHAT STATUS : ${senderName} ${randomEmoji}`); 
+
+              // Kirim notifikasi ke Telegram
+              if (settings.features.telegram.enabled) {
+                const bot = new TelegramBot(settings.features.telegram.token, { polling: false }); // Inisialisasi Telegram bot
+                if (settings.features.telegram.chatId) {
+                  try {
+                    await bot.sendMessage(settings.features.telegram.chatId, `AUTO LIHAT STATUS : ${senderName} ${randomEmoji}`);
+                    if (!settings.features.telegram.debug) {
+                      console.log(`Notifikasi Telegram berhasil dikirim: AUTO LIHAT STATUS : ${senderName} ${randomEmoji}`);
+                    }
+                  } catch (error) {
+                    console.error('Error mengirim notifikasi ke Telegram:', error);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error', error);
+            }
+          } 
+          // Cek pengaturan status speed
+          if (settings.features.statusSpeed.enabled) {
+            const currentTime = Date.now();
+            const messageTime = m.messageTimestamp * 1000;
+            const timeDiff = currentTime - messageTime;
+
+            if (timeDiff <= settings.features.statusSpeed.delay) { 
+              await client.sendMessage("status@broadcast", {
+                react: { text: '👍', key: m.key },
+              }, { statusJidList: [m.key.participant] });
+              console.log(`AUTO LIHAT STATUS (cepat): ${senderName}`);
+            }
+          }
+        }
+      }
+      // Auto Typing
+      if (settings.features.autoTyping.enabled && !m.key.fromMe) {
+        await client.sendPresenceUpdate('composing', m.key.remoteJid); 
+        setTimeout(() => {
+          client.sendPresenceUpdate('available', m.key.remoteJid); 
+        }, 2000); // Set delay
+      }
+    }
+  });
+
+  client.ev.on("group-participants.update", async (update) => {
+    const { id, participants, action } = update;
+    const groupMetadata = await client.groupMetadata(id);
+    const groupName = groupMetadata.subject;
+    // Auto Read Story
+    if (settings.features.autoReadStory.enabled) {
+      for (const participant of participants) {
+        if (action == 'add') {
+          console.log(`[INFO]   ${participant} joined ${groupName}`);
+        } else if (action == 'remove') {
+          console.log(`[INFO]   ${participant} left ${groupName}`);
+        }
+      }
+    }
+  });
+
+  // Fitur Auto Bio Uptime
+  if (settings.features.autoBioUptime.enabled) {
+    let uptimeInterval = setInterval(async () => {
+      const uptime = getUptime();
+      const formattedUptime = formatUptime(uptime);
+      await client.updateProfileStatus(`Bot Aktif: ${formattedUptime}`);
+      console.log(`[INFO]   Bio updated: Bot Aktif: ${formattedUptime}`);
+    }, settings.features.autoBioUptime.updateInterval);
+
+    client.ev.on('connection.update', async (update) => {
+      const { connection } = update;
+      if (connection === 'close') {
+        clearInterval(uptimeInterval); // Clear interval when connection closes
+        console.log('[INFO]   Bio Uptime: Interval Cleared');
+      }
+    });
+  }
+
+  client.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect } = update;
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut);
+      console.log(`\n[INFO] Connection closed. Reconnect: ${shouldReconnect}`); 
+      // reconnect if not logged out
+      if (shouldReconnect) {
+        await WAStart();
+      }
+    } else if (connection === 'open') {
+      console.log(`\n[INFO] Connected successfully to WhatsApp!`); 
+      // jika auto online diaktifkan
+      if (settings.features.autoOnline.enabled) {
+        client.sendPresenceUpdate('available', 'status@broadcast');
+        console.log('[INFO]   Auto Online: Aktif');
+      }
+    }
+  });
+}
+
+function getUptime() {
+  let uptime = process.uptime();
+  return uptime;
+}
+
+function formatUptime(uptime) {
+  let hours = Math.floor(uptime / 3600);
+  let minutes = Math.floor((uptime % 3600) / 60);
+  let seconds = Math.floor(uptime % 60);
+
+  return `${hours} jam ${minutes} menit ${seconds} detik`;
+}
+
+WAStart();
