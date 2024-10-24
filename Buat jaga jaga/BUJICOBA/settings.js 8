@@ -1,0 +1,42 @@
+// settings.js
+module.exports = {
+  sessionPath: './sesi', // Path ke sesi bisa di ganti di sini
+  browserPlatform: "ubuntu", // Platform browser (contoh: ubuntu, mac, windows)
+  browserName: "Chrome", // Nama browser (contoh: Chrome, Firefox, Safari) bisa di rubah di sini
+  features: {
+    autoReadStory: {
+      enabled: true,
+      emoji: true,
+      emojis: ["👍", "❤️", "😍", "👏", "🔥", "🙏", "😎", "🤯", "💯"],
+    },
+    statusSpeed: {
+      enabled: true,
+      delay: 500 // Delay in milliseconds (3 detik)
+    },
+    autoOnline: {
+      enabled: false,
+    },
+    autoBioUptime: {
+      enabled: false,
+      updateInterval: 60000 // Update interval in milliseconds (1 menit)
+    },
+    autoTyping: {
+      enabled: false, // Default: nonaktif
+    },
+    statusNameSource: {
+      usePushName: false // Gunakan m.pushName jika true, m.key.participant.split('@')[0] jika false
+    },
+    uncaughtExceptionLogging: {
+      enabled: true // Default: enabled
+    },
+    telegram: {
+      enabled: true, 
+      chatId: 5810736154, 
+      token: "6926820201:AAFLmKIqmm_2vXnEY6B-VJ6DnjMiYKt0WMU",
+      debug: false 
+    }
+  },
+  uncaughtExceptionLogging: {
+    enabled: true // Default: enabled
+  },
+}
