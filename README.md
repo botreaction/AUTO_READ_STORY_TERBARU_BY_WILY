@@ -43,7 +43,7 @@ npm install
 
 ### Usage
 
-# To start the bot, use the following command:
+To start the bot, use the following command:
 
 ```bash
 npm start
@@ -74,7 +74,7 @@ npm run pm2
 npm run restart:pm2
 ```
 
-stop:pm2: Stops the bot managed by PM2.
+`stop:pm2:` Stops the bot managed by PM2.
 
 ```bash
 npm run stop:pm2
@@ -82,7 +82,7 @@ npm run stop:pm2
 
 ### Directory Structure
 
-.
+```
 ├── LICENSE
 ├── README.md
 ├── package-lock.json
@@ -107,6 +107,7 @@ npm run stop:pm2
         ├── function.js
         ├── serialize.js
         └── sticker.js
+```
 
 ### License
 
