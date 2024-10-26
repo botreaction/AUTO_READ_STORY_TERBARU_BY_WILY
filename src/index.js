@@ -1,6 +1,7 @@
 const { createClient, getWAVersion } = require("./lib/client");
 const { handleMessagesUpsert } = require("./events/messageHandler");
 const { serialize } = require("./lib/serialize");
+const { getRandomEmoji } = require("./lib/emoji");
 const config = require("./configs/config");
 
 const pairingCode =
@@ -30,45 +31,33 @@ async function WAStart() {
       store.groupMetadata = await client.groupFetchAllParticipating();
 
     if (m.key && !m.key.fromMe && m.key.remoteJid === "status@broadcast") {
-      const currentTime = Date.now();
-      const messageTime = m.messageTimestamp * 1000;
-      const timeDiff = currentTime - messageTime;
-
-      if (timeDiff <= config.storyReadInterval) {
-        if (settings.autoReadStory) {
-          try {
-            await client.readMessages([m.key]);
-            console.log(
-              `Berhasil melihat status dari ${m.key.participant.split("@")[0]}`,
-            );
-          } catch (error) {
-            console.error("Error reading status:", error);
-          }
-        }
-
-        // React to the status with a random emoji
-        try {
-          const randomEmoji = getRandomEmoji();
-          await client.sendMessage(
-            "status@broadcast",
-            { react: { text: randomEmoji, key: m.key } },
-            { statusJidList: [m.key.participant] },
-          );
-        } catch (error) {
-          console.error("Error sending emoji reaction:", error);
-        }
-      }
-    }
-
-    if (config.autoReadMessage && !m.key.fromMe) {
+      if (m.type === "protocolMessage" && m.message.protocolMessage.type === 0)
+        return;
+      await client.readMessages([m.key]);
+      let id = m.key.participant;
+      let name = client.getName(id);
+      /*
+			if (process.env.TELEGRAM_TOKEN && process.env.ID_TELEGRAM) {
+				if (m.isMedia) {
+					let media = await client.downloadMediaMessage(m);
+					let caption = `Dari : https://wa.me/${id.split('@')[0]} (${name})${m.body ? `\n\n${m.body}` : ''}`;
+					await sendTelegram(process.env.ID_TELEGRAM, media, { type: /audio/.test(m.msg.mimetype) ? 'document' : '', caption });
+				} else await sendTelegram(process.env.ID_TELEGRAM, `Dari : https://wa.me/${id.split('@')[0]} (${name})\n\n${m.body}`);
+			}
+			*/
       try {
-        await client.readMessages([m.key]);
+        const randomEmoji = getRandomEmoji();
+        await client.sendMessage(
+          "status@broadcast",
+          { react: { text: randomEmoji, key: m.key } },
+          { statusJidList: [m.key.participant] },
+        );
       } catch (error) {
-        console.error("Error auto-reading message:", error);
+        console.error("Error sending emoji reaction:", error);
       }
     }
 
-    await handleMessagesUpsert(m, client, store);
+    await handleMessagesUpsert(client, store, m);
   });
 
   if (config.autoOnline) {

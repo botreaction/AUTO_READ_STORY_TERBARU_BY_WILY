@@ -1,4 +1,4 @@
-const settings = require("../configs/config");
+const config = require("../configs/config");
 
 const { delay, jidNormalizedUser } = require("@whiskeysockets/baileys");
 const util = require("util");
@@ -22,7 +22,7 @@ for (const file of commandFiles) {
   });
 }
 
-const handleMessagesUpsert = async (m, client, store) => {
+const handleMessagesUpsert = async (client, store, m) => {
   try {
     let quoted = m.isQuoted ? m.quoted : m;
     let downloadM = async (filename) =>
@@ -48,6 +48,14 @@ const handleMessagesUpsert = async (m, client, store) => {
         Color.greenBright("Pesan :"),
         Color.greenBright(m.body || m.type),
       );
+    }
+
+    if (config.autoReadMessage && !m.key.fromMe) {
+      try {
+        await client.readMessages([m.key]);
+      } catch (error) {
+        console.error("Error auto-reading message:", error);
+      }
     }
 
     if (m.prefix) {
