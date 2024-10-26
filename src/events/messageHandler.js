@@ -11,25 +11,60 @@ const Color = require("../lib/color.js");
 const { serialize, getContentType } = require("../lib/serialize.js");
 
 const commands = new Map();
-const commandFiles = fs
-  .readdirSync(path.join(__dirname, "../commands"))
-  .filter((file) => file.endsWith(".js"));
 
-for (const file of commandFiles) {
-  const command = require(`../commands/${file}`);
-  command.cmd.forEach((cmdName) => {
-    commands.set(cmdName, command);
+const loadCommands = () => {
+  commands.clear();
+
+  const commandFiles = fs
+    .readdirSync(path.join(__dirname, "../commands"))
+    .filter((file) => file.endsWith(".js"));
+
+  for (const file of commandFiles) {
+    const command = require(`../commands/${file}`);
+    command.cmd.forEach((cmdName) => {
+      commands.set(cmdName, command);
+    });
+  }
+};
+
+const watchCommands = () => {
+  const commandsPath = path.join(__dirname, "../commands");
+
+  fs.watch(commandsPath, (eventType, filename) => {
+    if (filename) {
+      const filePath = path.join(commandsPath, filename);
+      if (eventType === "change") {
+        delete require.cache[require.resolve(filePath)];
+        loadCommands();
+        console.log(Color.greenBright(`Command file updated: ${filename}`));
+      } else if (eventType === "rename") {
+        if (fs.existsSync(filePath)) {
+          // File ditambahkan
+          delete require.cache[require.resolve(filePath)];
+          loadCommands();
+          console.log(Color.blueBright(`New command added: ${filename}`));
+        } else {
+          // File dihapus
+          loadCommands();
+          console.log(Color.redBright(`Command removed: ${filename}`));
+        }
+      }
+    }
   });
-}
+};
+
+loadCommands();
+watchCommands();
 
 const handleMessagesUpsert = async (client, store, m) => {
   try {
     let quoted = m.isQuoted ? m.quoted : m;
     let downloadM = async (filename) =>
       await client.downloadMediaMessage(quoted, filename);
-
+      
     if (m.isBot) return;
-
+    if (config.self && !m.isOwner) return;
+    
     if (m.message && !m.isBot) {
       console.log(
         Color.cyan("Dari"),
@@ -110,7 +145,7 @@ const handleMessagesUpsert = async (client, store, m) => {
 
         if (isAccept) {
           try {
-            await command.execute(m, { client, args, text, quoted, store });
+            await command.execute(m, { client, args, text, quoted, commands, store });
           } catch (error) {
             console.error(`Error executing command ${commandName}:`, error);
             await m.reply(util.format(error));

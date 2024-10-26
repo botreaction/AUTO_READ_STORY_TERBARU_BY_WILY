@@ -1,6 +1,7 @@
 module.exports = {
   cmd: ["ping"],
   name: "ping",
+  category: "main",
   description: "Balas dengan pong",
   async execute(m, { client }) {
     try {

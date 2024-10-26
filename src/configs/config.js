@@ -1,4 +1,4 @@
-const settings = {
+module.exports = {
   owner: ["62895347198105", "6285691464024"],
   pairingNumber: "",
   self: true,
@@ -11,5 +11,3 @@ const settings = {
   writeStore: true,
   session: "session",
 };
-
-module.exports = settings;

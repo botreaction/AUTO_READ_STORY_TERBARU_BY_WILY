@@ -34,7 +34,6 @@ async function WAStart() {
     let code = await client.requestPairingCode(phoneNumber);
     code = code?.match(/.{1,4}/g)?.join("-") || code;
     console.log(`⚠︎ Kode WhatsApp kamu: ` + code);
-    rl.close();
   }
 
   if (config.autoOnline) {
@@ -167,9 +166,7 @@ async function WAStart() {
         console.error("Error sending emoji reaction:", error);
       }
     }
-
-    if (config.self === "true" && !m.isOwner) return;
-
+    
     await handleMessagesUpsert(client, store, m);
   });
 
@@ -181,7 +178,7 @@ async function WAStart() {
       fs.writeFileSync(pathContacts, JSON.stringify(store.contacts));
 
     // write store
-    if (config.writeStore === "true")
+    if (config.writeStore)
       store.writeToFile(`./${config.session}/store.json`);
 
     // untuk auto restart ketika RAM sisa 300MB
