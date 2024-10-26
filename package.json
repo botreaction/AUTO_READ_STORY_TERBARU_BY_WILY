@@ -2,9 +2,12 @@
   "name": "Wily Kun",
   "version": "1.0.0",
   "description": "Kuntil",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js --pairing-code"
+    "start": "node src/index.js --max-old-space-size=8192",
+    "pm2": "pm2 start src/index.js --name bot-sw -- --max-old-space-size=8192",
+    "restart:pm2": "pm2 restart bot-sw",
+    "stop:pm2": "pm2 stop bot-sw"
   },
   "author": "Wily Kun",
   "license": "MIT",
