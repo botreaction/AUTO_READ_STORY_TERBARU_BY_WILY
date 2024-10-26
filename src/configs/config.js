@@ -1,6 +1,6 @@
 module.exports = {
   owner: ["62895347198105", "6285691464024"],
-  pairingNumber: "",
+  pairingNumber: "6285691464024",
   self: true,
   autoReadStory: true,
   autoReadStoryEmoji: true,
