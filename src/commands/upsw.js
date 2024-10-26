@@ -53,7 +53,7 @@ module.exports = {
         await client.sendMessage(
           "status@broadcast",
           {
-            audio: await downloadM(),
+            audio: await quoted.download(),
             mimetype: "audio/mp4",
             ptt: true,
             waveform: [100, 0, 100, 0, 100, 0, 100],
@@ -74,7 +74,7 @@ module.exports = {
         await client.sendMessage(
           "status@broadcast",
           {
-            [type]: await downloadM(),
+            [type]: await quoted.download(),
             caption: m.text || m.quoted?.body || "",
           },
           { statusJidList },

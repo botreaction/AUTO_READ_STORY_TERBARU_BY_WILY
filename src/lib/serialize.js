@@ -247,7 +247,9 @@ async function serialize(client, msg, store) {
         ? msg.messageTimestamp * 1000
         : m.msg.timestampMs * 1000;
     m.isMedia = !!m.msg?.mimetype || !!m.msg?.thumbnailDirectPath;
-
+    m.download = async (filename) =>
+      await client.downloadMediaMessage(m, filename);
+      
     m.isQuoted = false;
     if (m.msg?.contextInfo?.quotedMessage) {
       m.isQuoted = true;
@@ -335,6 +337,10 @@ async function serialize(client, msg, store) {
         m.quoted.isOwner =
           m.quoted.sender &&
           config.owner.includes(m.quoted.sender.replace(/\D+/g, ""));
+          
+        m.quoted.download = async (filename) =>
+      await client.downloadMediaMessage(m.quoted, filename);
+      
       }
     }
   }
