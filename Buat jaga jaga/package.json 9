@@ -1,0 +1,22 @@
+{
+  "name": "Wily",
+  "version": "1.0.0",
+  "description": "Zeemod",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js --pairing-code"
+  },
+  "author": "WILY",
+  "license": "MIT",
+  "dependencies": {
+    "@hapi/boom": "latest",
+    "@whiskeysockets/baileys": "latest",
+    "dotenv": "latest",
+    "fs": "latest",
+    "node-telegram-bot-api": "latest",
+    "pino": "latest",
+    "qrcode-terminal": "latest",
+    "readline": "latest"
+  }
+}
