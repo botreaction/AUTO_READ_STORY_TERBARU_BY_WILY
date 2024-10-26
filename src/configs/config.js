@@ -1,4 +1,5 @@
 const settings = {
+  owner: ["62895347198105"],
   pairingNumber: "",
   autoReadStory: true,
   autoReadStoryEmoji: true,
