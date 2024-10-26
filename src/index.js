@@ -1,5 +1,5 @@
 const config = require("./configs/config");
-const { jidNormalizedUser } = require("@whiskeysockets/baileys");
+const { delay, jidNormalizedUser, PHONENUMBER_MCC } = require("@whiskeysockets/baileys");
 const { createClient, getWAVersion } = require("./lib/client");
 const { handleMessagesUpsert } = require("./events/messageHandler");
 const { serialize } = require("./lib/serialize");
@@ -11,8 +11,8 @@ const os = require("os");
 const { exec } = require("child_process");
 
 const pairingCode =
-  config.pairingNumber || process.argv.includes("--pairing-code");
-
+  config.pairingNumber 
+  
 const pathContacts = `./${config.session}/contacts.json`;
 const pathMetadata = `./${config.session}/groupMetadata.json`;
 
@@ -28,9 +28,11 @@ async function WAStart() {
     store.readFromFile(`./${config.session}/store.json`);
 
   if (pairingCode && !client.authState.creds.registered) {
-    const phoneNumber = await question(
-      `Silahkan masukkan nomor WhatsApp kamu: `,
-    );
+    let phoneNumber = pairingCode.replace(/[^0-9]/g, '');
+
+    if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) throw "Start with your country's WhatsApp code, Example : 62xxx";
+
+    await delay(3000)
     let code = await client.requestPairingCode(phoneNumber);
     code = code?.match(/.{1,4}/g)?.join("-") || code;
     console.log(`⚠︎ Kode WhatsApp kamu: ` + code);
