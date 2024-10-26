@@ -1,4 +1,7 @@
-const { fetchLatestBaileysVersion, fetchLatestWaWebVersion } = require("@whiskeysockets/baileys");
+const {
+  fetchLatestBaileysVersion,
+  fetchLatestWaWebVersion,
+} = require("@whiskeysockets/baileys");
 
 async function getWAVersion() {
   try {

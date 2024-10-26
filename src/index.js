@@ -1,11 +1,12 @@
-const { createClient } = require('./client/client');
-const { getWAVersion } = require('./client/waVersion');
-const { initAuth } = require('./configs/auth');
-const { handlePairing } = require('./configs/pairing');
-const config = require('./configs/config');
-const { handleMessagesUpsert } = require('./events/messageHandler');
+const { createClient } = require("./client/client");
+const { getWAVersion } = require("./client/waVersion");
+const { initAuth } = require("./configs/auth");
+const { handlePairing } = require("./configs/pairing");
+const config = require("./configs/config");
+const { handleMessagesUpsert } = require("./events/messageHandler");
 
-const pairingCode = config.pairingNumber || process.argv.includes("--pairing-code");
+const pairingCode =
+  config.pairingNumber || process.argv.includes("--pairing-code");
 
 async function WAStart() {
   const { state, saveCreds } = await initAuth();
@@ -18,7 +19,9 @@ async function WAStart() {
     await handlePairing(client);
   }
 
-  client.ev.on("messages.upsert", (chatUpdate) => handleMessagesUpsert(client, chatUpdate));
+  client.ev.on("messages.upsert", (chatUpdate) =>
+    handleMessagesUpsert(client, chatUpdate),
+  );
 
   if (config.autoOnline) {
     console.log("Auto Online diaktifkan.");

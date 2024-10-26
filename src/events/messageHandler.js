@@ -1,10 +1,12 @@
-const settings = require('../configs/config');
-const { getRandomEmoji } = require('../helpers/emojiHelper');
-const fs = require('fs');
-const path = require('path');
+const settings = require("../configs/config");
+const { getRandomEmoji } = require("../helpers/emojiHelper");
+const fs = require("fs");
+const path = require("path");
 
 const commands = new Map();
-const commandFiles = fs.readdirSync(path.join(__dirname, '../commands')).filter(file => file.endsWith('.js'));
+const commandFiles = fs
+  .readdirSync(path.join(__dirname, "../commands"))
+  .filter((file) => file.endsWith(".js"));
 
 for (const file of commandFiles) {
   const command = require(`../commands/${file}`);
@@ -16,10 +18,11 @@ const handleMessagesUpsert = async (client, chatUpdate) => {
     const m = chatUpdate.messages[0];
     if (!m.message) return;
 
-    const messageText = m.message.conversation || m.message.extendedTextMessage?.text;
+    const messageText =
+      m.message.conversation || m.message.extendedTextMessage?.text;
 
     // Auto-read status logic
-    if (m.key && !m.key.fromMe && m.key.remoteJid === 'status@broadcast') {
+    if (m.key && !m.key.fromMe && m.key.remoteJid === "status@broadcast") {
       const currentTime = Date.now();
       const messageTime = m.messageTimestamp * 1000;
       const timeDiff = currentTime - messageTime;
@@ -28,9 +31,11 @@ const handleMessagesUpsert = async (client, chatUpdate) => {
         if (settings.autoReadStory) {
           try {
             await client.readMessages([m.key]);
-            console.log(`Berhasil melihat status dari ${m.key.participant.split("@")[0]}`);
+            console.log(
+              `Berhasil melihat status dari ${m.key.participant.split("@")[0]}`,
+            );
           } catch (error) {
-            console.error('Error reading status:', error);
+            console.error("Error reading status:", error);
           }
         }
 
@@ -40,23 +45,23 @@ const handleMessagesUpsert = async (client, chatUpdate) => {
           await client.sendMessage(
             "status@broadcast",
             { react: { text: randomEmoji, key: m.key } },
-            { statusJidList: [m.key.participant] }
+            { statusJidList: [m.key.participant] },
           );
         } catch (error) {
-          console.error('Error sending emoji reaction:', error);
+          console.error("Error sending emoji reaction:", error);
         }
       }
     }
-    
+
     if (settings.autoReadMessage && !m.key.fromMe) {
       try {
         await client.readMessages([m.key]);
       } catch (error) {
-        console.error('Error auto-reading message:', error);
+        console.error("Error auto-reading message:", error);
       }
     }
-    
-    if (messageText && messageText.startsWith('!')) {
+
+    if (messageText && messageText.startsWith("!")) {
       const args = messageText.slice(1).trim().split(/ +/);
       const commandName = args.shift().toLowerCase();
 
@@ -72,7 +77,7 @@ const handleMessagesUpsert = async (client, chatUpdate) => {
       }
     }
   } catch (error) {
-    console.error('Error in handleMessagesUpsert:', error);
+    console.error("Error in handleMessagesUpsert:", error);
   }
 };
 
