@@ -58,6 +58,45 @@ const handleMessagesUpsert = async (client, store, m) => {
       }
     }
 
+    // eval
+    if (
+      [">", "eval", "=>"].some((a) => m.command.toLowerCase().startsWith(a)) &&
+      m.isOwner
+    ) {
+      let evalCmd = "";
+      try {
+        evalCmd = /await/i.test(m.text)
+          ? eval("(async() => { " + m.text + " })()")
+          : eval(m.text);
+      } catch (e) {
+        evalCmd = e;
+      }
+      new Promise((resolve, reject) => {
+        try {
+          resolve(evalCmd);
+        } catch (err) {
+          reject(err);
+        }
+      })
+        ?.then((res) => m.reply(util.format(res)))
+        ?.catch((err) => m.reply(util.format(err)));
+    }
+
+    // exec
+    if (
+      ["$", "exec"].some((a) => m.command.toLowerCase().startsWith(a)) &&
+      m.isOwner
+    ) {
+      try {
+        exec(m.text, async (err, stdout) => {
+          if (err) return m.reply(util.format(err));
+          if (stdout) return m.reply(util.format(stdout));
+        });
+      } catch (e) {
+        await m.reply(util.format(e));
+      }
+    }
+
     if (m.prefix) {
       const { args, text } = m;
       const isCommand = m.prefix && m.body.startsWith(m.prefix);
@@ -71,15 +110,17 @@ const handleMessagesUpsert = async (client, store, m) => {
 
         if (isAccept) {
           try {
-            await command.execute(m, { client, args, text });
+            await command.execute(m, { client, args, text, quoted, store });
           } catch (error) {
             console.error(`Error executing command ${commandName}:`, error);
+            await m.reply(util.format(error));
           }
         }
       }
     }
   } catch (error) {
     console.error("Error in handleMessagesUpsert:", error);
+    await m.reply(util.format(err));
   }
 };
 

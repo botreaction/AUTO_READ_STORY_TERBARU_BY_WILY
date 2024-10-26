@@ -10,10 +10,13 @@ const { Client } = require("../lib/serialize");
 const pino = require("pino");
 
 const createClient = async (options = {}) => {
-  const store = makeInMemoryStore({
-    logger: pino().child({ level: "silent", stream: "store" }),
-  });
-  const { state, saveCreds } = await useMultiFileAuthState("./session");
+  const logger = pino({
+    timestamp: () => `,"time":"${new Date().toJSON()}"`,
+  }).child({ class: "client" });
+  logger.level = "fatal";
+  const store = makeInMemoryStore({ logger });
+
+  const { state, saveCreds } = await useMultiFileAuthState(options.session);
   const client = WAConnect({
     logger: pino({ level: "silent" }),
     printQRInTerminal: true,
