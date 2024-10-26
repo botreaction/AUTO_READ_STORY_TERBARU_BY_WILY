@@ -1,5 +1,5 @@
 const config = require("./configs/config");
-const { delay, jidNormalizedUser, PHONENUMBER_MCC } = require("@whiskeysockets/baileys");
+const { delay, jidNormalizedUser } = require("@whiskeysockets/baileys");
 const { createClient, getWAVersion } = require("./lib/client");
 const { handleMessagesUpsert } = require("./events/messageHandler");
 const { serialize } = require("./lib/serialize");
@@ -29,9 +29,7 @@ async function WAStart() {
 
   if (pairingCode && !client.authState.creds.registered) {
     let phoneNumber = pairingCode.replace(/[^0-9]/g, '');
-
-    if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) throw "Start with your country's WhatsApp code, Example : 62xxx";
-
+    
     await delay(3000)
     let code = await client.requestPairingCode(phoneNumber);
     code = code?.match(/.{1,4}/g)?.join("-") || code;
