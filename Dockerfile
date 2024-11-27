@@ -1,7 +1,7 @@
 FROM node:18
 
 # Set working directory
-WORKDIR /usr/src/app
+WORKDIR /usr/src/index
 
 # Copy package files and install dependencies
 COPY package.json ./
